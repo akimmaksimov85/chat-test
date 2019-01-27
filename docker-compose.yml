@@ -1,28 +1,65 @@
-version: '3'
+version: '3.5'
+
+volumes:
+  redis-data:
 
 services:
   nginx:
-    image: nginx:1.13
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: nginx
     restart: always
     ports:
-      - 80:80
-    volumes:
-      - ./src/public:/var/www/public
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-    depends_on:
-      - php
+      - 8090:80
 
-  php:
-    build: ./php-fpm
+  rest:
+    build:
+      context: ./rest
+      dockerfile: Dockerfile
+    container_name: rest
     restart: always
     volumes:
-      - ./src:/var/www/scaut-test
+      - ./rest:/var/www/rest
+    depends_on:
+      - nginx
+      - redis
 
   redis:
     image: redis
     restart: always
+    container_name: redis
+    command: redis-server
+    volumes:
+      - redis-data:/data
     ports:
       - "6379:6379"
+
+  frontend:
+    container_name: frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - rest
+      - socket
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - './frontend:/usr/src/app'
+      - '/usr/src/app/node_modules'
+
+  socket:
+    container_name: socket
+    build:
+      context: ./socket
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "6001:6001"
+    depends_on:
+      - redis
     
-
-
